@@ -1,41 +1,38 @@
 version: 2.1
+orbs:
+  python: circleci/python@2.0.3
+  heroku: circleci/heroku@1.2.6
+
 jobs:
-
-  build:
-    docker:
-      # specify the version you desire here
-      - image: cimg/python:3.12.0
-
-    working_directory: ~/repo
-
+  build_and_test: # this can be any name you choose
+    executor: python/default
     steps:
       - checkout
-
-      # Download and cache dependencies
-      - restore_cache:
-          keys:
-          - v1-dependencies-{{ checksum "requirements.txt" }}
-          # fallback to using the latest cache if no exact match is found
-          - v1-dependencies-
-
+      - python/install-packages:
+          pkg-manager: pip
       - run:
-          name: install dependencies
-          command: |
-            python -m venv venv
-            . venv/bin/activate
-            pip install -r requirements.txt
-
-      - save_cache:
+          name: Run tests
+          command: python manage.py test
+      - persist_to_workspace:
+          root: ~/project
           paths:
-            - ./venv
-          key: v1-dependencies-{{ checksum "requirements.txt" }}
+            - .
 
-      - run:
-          name: run tests
-          command: |
-            . venv/bin/activate
-            python manage.py test
+  deploy: # this can be any name you choose
+    executor: python/default
+    steps:
+      - attach_workspace:
+          at: ~/project
+      - heroku/deploy-via-git:
+          force: true # force push when pushing to the heroku remote, see: https://devcenter.heroku.com/articles/git
 
-      - store_artifacts:
-          path: test-reports
-          destination: test-reports
+workflows:
+  test_my_app:
+    jobs:
+      - build_and_test
+      - deploy:
+          requires:
+            - build_and_test # only deploy if the build_and_test job has completed
+          filters:
+            branches:
+              only: main # only deploy when on main
