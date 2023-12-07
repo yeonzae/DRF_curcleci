@@ -1,9 +1,11 @@
 version: 2
 jobs:
+  version: 2.1
+
   build:
     docker:
       # specify the version you desire here
-      - image: circleci/python:3.11.8
+      - image: circleci/python:stable
 
 
     working_directory: ~/repo
